@@ -1,0 +1,25 @@
+.translator-gator-overlay {
+  z-index: 9999;
+}
+
+.translation-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: 'Comic Sans MS', 'Manga Temple', sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  color: #000;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 4px;
+  padding: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  word-wrap: break-word;
+  overflow: hidden;
+}
+
+.translation-text:hover {
+  background: rgba(255, 255, 255, 1);
+  z-index: 10000;
+}

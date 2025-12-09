@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 300px;
+      padding: 16px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 0 0 16px 0;
+      color: #2c3e50;
+    }
+    .logo {
+      font-size: 24px;
+      margin-right: 8px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .primary {
+      background: #3498db;
+      color: white;
+    }
+    .primary:hover {
+      background: #2980b9;
+    }
+    .secondary {
+      background: #ecf0f1;
+      color: #2c3e50;
+    }
+    .secondary:hover {
+      background: #bdc3c7;
+    }
+    select {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .status {
+      margin-top: 12px;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      text-align: center;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+    }
+  </style>
+</head>
+<body>
+  <h1><span class="logo">🐊</span>Translator Gator</h1>
+  
+  <label for="mode">Translation Style:</label>
+  <select id="mode">
+    <option value="natural">Natural English</option>
+    <option value="literal">Literal Translation</option>
+    <option value="casual">Casual/Fan-scan</option>
+    <option value="polite">Polite Mode</option>
+  </select>
+
+  <button id="translate" class="primary">🌐 Translate Page</button>
+  <button id="clear" class="secondary">🗑️ Clear Translations</button>
+
+  <div id="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
