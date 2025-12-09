@@ -1,12 +1,13 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import os
+import asyncio
 
-# Import our services
 from paddleocr_service import manga_ocr
-from ernie_service import get_ernie_translator
+from ernie_service import get_ernie_translator, ERNIETranslator
 
 app = FastAPI(title="Translator Gator API")
 
@@ -16,7 +17,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
 class TranslationRequest(BaseModel):
@@ -35,70 +36,72 @@ class TranslationResponse(BaseModel):
     bubbles: List[Bubble]
     success: bool
 
-# Initialize ERNIE model on startup
-ernie_translator = None
+# Initialize ERNIE singleton
+ernie_translator: Optional[ERNIETranslator] = None
 
 @app.on_event("startup")
 async def startup_event():
-    """Load ERNIE model on startup"""
     global ernie_translator
-    model_name = os.getenv("ERNIE_MODEL", "baidu/ERNIE-4.5-8B-Instruct")
-    print(f"Initializing ERNIE model: {model_name}")
+    model_name = os.getenv("ERNIE_MODEL", "baidu/ERNIE-4.5-0.3B-PT")
+    print(f"[Startup] Loading ERNIE model: {model_name}")
     ernie_translator = get_ernie_translator(model_name)
-    print("ERNIE model ready!")
+    print("[Startup] ERNIE ready!")
 
 @app.get("/")
 def root():
     return {
-        "message": "Translator Gator API is running! 🐊",
-        "model": "ERNIE 4.5 from Hugging Face",
+        "message": "Translator Gator API running! 🐊",
+        "model": "ERNIE 0.3B/3B",
         "ocr": "PaddleOCR-VL"
     }
 
 @app.post("/translate", response_model=TranslationResponse)
 async def translate_manga(request: TranslationRequest):
-    """
-    Main translation endpoint
-    1. Extract text with PaddleOCR-VL
-    2. Translate with ERNIE from Hugging Face
-    3. Return bubble coordinates + translations
-    """
     try:
-        # Step 1: OCR with PaddleOCR
+        print(f"[API] Translating: {request.image_url[:80]}...")
+        
         ocr_results = manga_ocr.extract_from_url(request.image_url)
+        print(f"[API] OCR found {len(ocr_results)} text regions")
         
-        # Step 2: Translate with ERNIE
-        bubbles = []
-        for result in ocr_results:
-            translated = ernie_translator.translate(
-                result['text'],
-                request.mode
+        if not ocr_results:
+            return TranslationResponse(bubbles=[], success=True)
+
+        async def translate_bubble(b):
+            print(f"[API] Translating: {b['text'][:50]}...")
+            translated = await asyncio.to_thread(ernie_translator.translate, b['text'], request.mode)
+            print(f"[API] Result: {translated[:50]}...")
+            return Bubble(
+                x=b['x'], y=b['y'],
+                width=b['width'], height=b['height'],
+                original_text=b['text'], translated_text=translated
             )
-            
-            bubble = Bubble(
-                x=result['x'],
-                y=result['y'],
-                width=result['width'],
-                height=result['height'],
-                original_text=result['text'],
-                translated_text=translated
-            )
-            bubbles.append(bubble)
-        
-        return TranslationResponse(bubbles=bubbles, success=True)
-    
+
+        bubbles = await asyncio.gather(*[translate_bubble(b) for b in ocr_results])
+        print(f"[API] Translation complete: {len(bubbles)} bubbles")
+        return TranslationResponse(bubbles=list(bubbles), success=True)
+
     except Exception as e:
-        print(f"Translation error: {e}")
+        import traceback
+        print(f"[API] ERROR: {e}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 def health_check():
-    """Check if models are loaded"""
     return {
         "status": "healthy",
         "ernie_loaded": ernie_translator is not None,
         "ocr_loaded": manga_ocr is not None
     }
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global error handler for better debugging"""
+    print(f"[ERROR] {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"error": str(exc), "success": False}
+    )
 
 if __name__ == "__main__":
     import uvicorn

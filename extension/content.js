@@ -35,7 +35,7 @@ function isMangaImage(img) {
   const minWidth = 400;
   const minHeight = 400;
   
-  return (
+  const isManga = (
     img.naturalWidth >= minWidth &&
     img.naturalHeight >= minHeight &&
     (src.includes('manga') || 
@@ -43,9 +43,16 @@ function isMangaImage(img) {
      src.includes('page') ||
      img.alt.toLowerCase().includes('manga'))
   );
+  
+  if (isManga) {
+    console.log(`✓ Manga image detected: ${img.naturalWidth}x${img.naturalHeight}`);
+  }
+  
+  return isManga;
 }
 
 async function translateImage(img) {
+  console.log(`Translating image: ${img.src.substring(0, 50)}...`);
   try {
     const response = await fetch(`${API_URL}/translate`, {
       method: 'POST',
@@ -56,10 +63,15 @@ async function translateImage(img) {
       })
     });
 
+    console.log(`API response status: ${response.status}`);
     const data = await response.json();
+    console.log(`Received ${data.bubbles?.length || 0} bubbles`);
     
     if (data.bubbles && data.bubbles.length > 0) {
+      console.log('Creating overlay...');
       createOverlay(img, data.bubbles);
+    } else {
+      console.log('No text detected in image');
     }
   } catch (error) {
     console.error('Translation error:', error);
